@@ -1,16 +1,20 @@
 import { useState } from 'react'
+import { CodingPanel } from './components/CodingPanel'
 import { ConnectPanel } from './components/ConnectPanel'
 import { DtcPanel } from './components/DtcPanel'
 import { LiveData } from './components/LiveData'
+import { PerformancePanel } from './components/PerformancePanel'
 import { Terminal } from './components/Terminal'
 import { VehicleInfo } from './components/VehicleInfo'
 import { useObd } from './hooks/useObd'
 
-type Tab = 'live' | 'dtc' | 'info' | 'terminal'
+type Tab = 'live' | 'perf' | 'dtc' | 'coding' | 'info' | 'terminal'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'live', label: 'Live-Daten' },
+  { id: 'perf', label: 'Performance' },
   { id: 'dtc', label: 'Fehlercodes' },
+  { id: 'coding', label: 'Codierung' },
   { id: 'info', label: 'Fahrzeug' },
   { id: 'terminal', label: 'Terminal' },
 ]
@@ -65,7 +69,9 @@ export default function App() {
         ) : (
           <>
             {tab === 'live' && <LiveData elm={elm} supported={obd.supported} />}
+            {tab === 'perf' && <PerformancePanel elm={elm} />}
             {tab === 'dtc' && <DtcPanel elm={elm} />}
+            {tab === 'coding' && <CodingPanel elm={elm} />}
             {tab === 'info' && (
               <VehicleInfo
                 elm={elm}
