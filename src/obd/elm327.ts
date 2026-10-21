@@ -9,43 +9,31 @@ import {
   splitLines,
 } from './parse'
 import type { PidDef } from './pids'
-
-export type LogDirection = 'tx' | 'rx' | 'info' | 'error'
-export type Logger = (direction: LogDirection, text: string) => void
-
-export interface AdapterInfo {
-  version: string
-  protocol: string
-  protocolNumber: string
-  isCan: boolean
-}
-
-export interface Timed<T> {
-  value: T
-  /** Mittelpunkt zwischen Senden und Antwort (performance.now()). */
-  t: number
-}
-
-/** CAN-Adressen eines Steuergeräts (11 bit). */
-export interface CanTarget {
-  tx: number
-  rx: number
-}
-
-export class ElmError extends Error {}
+import {
+  isAddressTarget,
+  LinkError,
+  type AdapterInfo,
+  type EcuTarget,
+  type Logger,
+  type Timed,
+  type VehicleLink,
+} from './link'
 
 const CAN_PROTOCOLS = /^A?[6-9A-C]$/
 const CAN_11BIT = /^A?[68]$/
 
 /** Spricht mit einem ELM327 (oder kompatiblem Chip) über einen Transport. */
-export class Elm327 {
+export class Elm327 implements VehicleLink {
+  readonly kind = 'elm327' as const
+  readonly terminalHint =
+    'Rohbefehle an den ELM327 senden, z. B. ATRV, ATI, 010C oder 0902.'
+  readonly terminalPlaceholder = 'Befehl, z. B. ATRV'
   private buffer = ''
   private pending: { resolve: (raw: string) => void; reject: (e: Error) => void; timer: number } | null = null
   private queue: Promise<unknown> = Promise.resolve()
   isCan = false
   isCan11Bit = false
   private fastMode = true
-  private target: CanTarget | null = null
   private transport: Transport
   private log: Logger
 
@@ -80,7 +68,7 @@ export class Elm327 {
       const raw = await new Promise<string>((resolve, reject) => {
         const timer = window.setTimeout(() => {
           this.pending = null
-          reject(new ElmError(`Zeitüberschreitung bei "${command}"`))
+          reject(new LinkError(`Zeitüberschreitung bei "${command}"`))
         }, timeoutMs)
         this.pending = { resolve, reject, timer }
         this.transport.write(command + '\r').catch((e: Error) => {
@@ -111,7 +99,7 @@ export class Elm327 {
     const probe = await this.send('0100', 20000)
     const error = findError(probe)
     if (error) {
-      throw new ElmError(
+      throw new LinkError(
         `Keine Antwort vom Fahrzeug (${error}). Zündung eingeschaltet?`,
       )
     }
@@ -121,7 +109,7 @@ export class Elm327 {
     this.isCan = CAN_PROTOCOLS.test(protocolNumber)
     this.isCan11Bit = CAN_11BIT.test(protocolNumber)
     this.log('info', `Protokoll: ${protocol}`)
-    return { version, protocol, protocolNumber, isCan: this.isCan }
+    return { version, protocol, isCan: this.isCan }
   }
 
   async getSupportedPids(): Promise<Set<number>> {
@@ -161,8 +149,17 @@ export class Elm327 {
    * Richtet den Adapter auf ein einzelnes Steuergerät aus (physikalische Adressierung
    * für UDS). `null` stellt die OBD-Broadcast-Adressierung (7DF) wieder her.
    */
-  async setTarget(target: CanTarget | null) {
-    if (!this.isCan11Bit) throw new ElmError('UDS wird nur bei 11-bit-CAN unterstützt.')
+  get supportsUds() {
+    return this.isCan11Bit
+  }
+
+  sendRaw(command: string) {
+    return this.send(command, 10000)
+  }
+
+  async setTarget(target: EcuTarget | null) {
+    if (!this.isCan11Bit) throw new LinkError('UDS wird nur bei 11-bit-CAN unterstützt.')
+    if (target && isAddressTarget(target)) throw new LinkError('ELM327 benötigt CAN-IDs.')
     if (target) {
       const tx = hex3(target.tx)
       // Flusskontrolle explizit setzen, damit auch Adresspaare außerhalb 7E0/7E8 funktionieren.
@@ -172,11 +169,6 @@ export class Elm327 {
     } else {
       for (const cmd of ['ATSH7DF', 'ATCRA', 'ATFCSM0', 'ATST32']) await this.send(cmd)
     }
-    this.target = target
-  }
-
-  get currentTarget() {
-    return this.target
   }
 
   /**
@@ -186,9 +178,9 @@ export class Elm327 {
   async request(bytes: number[], timeoutMs = 8000): Promise<number[]> {
     const lines = await this.send(bytes.map(hex).join(''), timeoutMs)
     const error = findError(lines)
-    if (error) throw new ElmError(error === 'NO DATA' ? 'Keine Antwort vom Steuergerät' : error)
+    if (error) throw new LinkError(error === 'NO DATA' ? 'Keine Antwort vom Steuergerät' : error)
     const messages = parseMessages(lines).filter((m) => !(m[0] === 0x7f && m[2] === 0x78))
-    if (messages.length === 0) throw new ElmError('Keine Antwort vom Steuergerät')
+    if (messages.length === 0) throw new LinkError('Keine Antwort vom Steuergerät')
     return messages[messages.length - 1]
   }
 
@@ -201,7 +193,7 @@ export class Elm327 {
   async clearDtcs(): Promise<void> {
     const lines = await this.send('04', 10000)
     const error = findError(lines)
-    if (error) throw new ElmError(`Löschen fehlgeschlagen: ${error}`)
+    if (error) throw new LinkError(`Löschen fehlgeschlagen: ${error}`)
   }
 
   async readVin(): Promise<string | null> {
@@ -218,7 +210,7 @@ export class Elm327 {
   async close() {
     if (this.pending) {
       clearTimeout(this.pending.timer)
-      this.pending.reject(new ElmError('Verbindung getrennt'))
+      this.pending.reject(new LinkError('Verbindung getrennt'))
       this.pending = null
     }
     this.transport.onData = null

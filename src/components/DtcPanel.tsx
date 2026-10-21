@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import { DTC_DESCRIPTIONS } from '../obd/dtcDescriptions'
 
 interface Props {
-  elm: Elm327
+  link: VehicleLink
 }
 
 interface DtcState {
@@ -18,7 +18,7 @@ const SECTIONS: { key: keyof DtcState; title: string; hint: string }[] = [
   { key: 'permanent', title: 'Permanent', hint: 'Lassen sich nicht löschen, verschwinden nach Reparatur (Mode 0A)' },
 ]
 
-export function DtcPanel({ elm }: Props) {
+export function DtcPanel({ link }: Props) {
   const [dtcs, setDtcs] = useState<DtcState | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -28,16 +28,16 @@ export function DtcPanel({ elm }: Props) {
     setMessage(null)
     try {
       setDtcs({
-        stored: await elm.readDtcs(0x03),
-        pending: await elm.readDtcs(0x07),
-        permanent: await elm.readDtcs(0x0a),
+        stored: await link.readDtcs(0x03),
+        pending: await link.readDtcs(0x07),
+        permanent: await link.readDtcs(0x0a),
       })
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
     }
-  }, [elm])
+  }, [link])
 
   useEffect(() => {
     void read()
@@ -53,7 +53,7 @@ export function DtcPanel({ elm }: Props) {
     setBusy(true)
     let result = 'Fehlerspeicher gelöscht.'
     try {
-      await elm.clearDtcs()
+      await link.clearDtcs()
     } catch (e) {
       result = e instanceof Error ? e.message : String(e)
     }

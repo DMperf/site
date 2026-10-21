@@ -81,7 +81,11 @@ export function parseMessages(lines: string[]): number[][] {
 
 /** Liefert die Datenbytes einer Mode-01-Antwort für die gegebene PID. */
 export function parsePidResponse(lines: string[], pid: number): number[] | null {
-  for (const msg of parseMessages(lines)) {
+  return pidFromMessages(parseMessages(lines), pid)
+}
+
+export function pidFromMessages(messages: number[][], pid: number): number[] | null {
+  for (const msg of messages) {
     if (msg[0] === 0x41 && msg[1] === pid) return msg.slice(2)
   }
   return null
@@ -89,8 +93,12 @@ export function parsePidResponse(lines: string[], pid: number): number[] | null 
 
 /** Wertet die Bitmasken aus 0100 / 0120 / 0140 … aus. */
 export function parseSupportedPids(lines: string[], base: number): number[] {
+  return supportedFromMessages(parseMessages(lines), base)
+}
+
+export function supportedFromMessages(messages: number[][], base: number): number[] {
   const supported = new Set<number>()
-  for (const msg of parseMessages(lines)) {
+  for (const msg of messages) {
     if (msg[0] !== 0x41 || msg[1] !== base) continue
     const mask = msg.slice(2, 6)
     mask.forEach((byte, i) => {
@@ -113,8 +121,12 @@ export function decodeDtc(a: number, b: number): string {
  * Zählerbyte, bei älteren Protokollen (K-Line, J1850) nicht.
  */
 export function parseDtcResponse(lines: string[], mode: number, isCan: boolean): string[] {
+  return dtcsFromMessages(parseMessages(lines), mode, isCan)
+}
+
+export function dtcsFromMessages(messages: number[][], mode: number, isCan: boolean): string[] {
   const codes = new Set<string>()
-  for (const msg of parseMessages(lines)) {
+  for (const msg of messages) {
     if (msg[0] !== mode + 0x40) continue
     let data = msg.slice(1)
     if (isCan) {
@@ -131,7 +143,11 @@ export function parseDtcResponse(lines: string[], mode: number, isCan: boolean):
 
 /** Fahrgestellnummer aus Mode 09 PID 02. */
 export function parseVin(lines: string[]): string | null {
-  const bytes = parseMessages(lines).flat()
+  return vinFromMessages(parseMessages(lines))
+}
+
+export function vinFromMessages(messages: number[][]): string | null {
+  const bytes = messages.flat()
   // VIN-Zeichensatz enthält kein I, O, Q – damit fallen Service-Byte 0x49
   // und Zähler/Padding automatisch heraus.
   const chars = bytes

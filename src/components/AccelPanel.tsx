@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import { PID_BY_ID } from '../obd/pids'
 import { analyzeRun, type RunResult, type SpeedSample } from '../perf/acceleration'
 import { load, save } from '../storage'
@@ -13,7 +13,7 @@ const CORRECTION_KEY = 'obd.accel.correction'
 const MAX_RUN_S = 60
 const MAX_HISTORY = 20
 
-export function AccelPanel({ elm }: { elm: Elm327 }) {
+export function AccelPanel({ link }: { link: VehicleLink }) {
   const [speed, setSpeed] = useState<number | null>(null)
   const [mode, setMode] = useState<Mode>('waiting')
   const [elapsed, setElapsed] = useState(0)
@@ -58,7 +58,7 @@ export function AccelPanel({ elm }: { elm: Elm327 }) {
       let count = 0
       let windowStart = performance.now()
       while (!cancelled) {
-        const reading = await elm.readPidTimed(SPEED).catch(() => null)
+        const reading = await link.readPidTimed(SPEED).catch(() => null)
         if (cancelled) return
         if (!reading || reading.value === null) continue
         const sample = { t: reading.t / 1000, v: reading.value * (1 + correctionRef.current / 100) }
@@ -108,7 +108,7 @@ export function AccelPanel({ elm }: { elm: Elm327 }) {
     return () => {
       cancelled = true
     }
-  }, [elm])
+  }, [link])
 
   const best = (label: string) => {
     const times = history

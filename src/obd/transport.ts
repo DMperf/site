@@ -3,7 +3,7 @@
  * Antworten enden mit dem Prompt ">".
  */
 export interface Transport {
-  readonly kind: 'ble' | 'serial' | 'demo'
+  readonly kind: 'ble' | 'serial' | 'wifi' | 'demo'
   readonly label: string
   connect(): Promise<void>
   disconnect(): Promise<void>

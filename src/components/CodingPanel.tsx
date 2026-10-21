@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { CanTarget, Elm327 } from '../obd/elm327'
+import { isAddressTarget, type EcuTarget, type VehicleLink } from '../obd/link'
 import {
   CODING_DIDS,
+  CAN_ECU_PRESETS,
   describeStatus,
-  ECU_PRESETS,
+  ENET_ECU_PRESETS,
   IDENT_DIDS,
   parseHex,
   toAscii,
@@ -23,24 +24,29 @@ interface Backup {
 }
 
 const BACKUP_KEY = 'obd.coding.backups'
+const hex2 = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
 const hex3 = (n: number) => n.toString(16).toUpperCase().padStart(3, '0')
 const hex4 = (n: number) => n.toString(16).toUpperCase().padStart(4, '0')
 const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const targetName = (t: EcuTarget) =>
+  isAddressTarget(t) ? `0x${hex2(t.address)}` : `${hex3(t.tx)}/${hex3(t.rx)}`
 
-export function CodingPanel({ elm }: { elm: Elm327 }) {
+export function CodingPanel({ link }: { link: VehicleLink }) {
   const [presetKey, setPresetKey] = useState('0:0')
-  const [custom, setCustom] = useState({ tx: '7E0', rx: '7E8' })
-  const [target, setTarget] = useState<CanTarget | null>(null)
+  const [custom, setCustom] = useState({ tx: '7E0', rx: '7E8', address: '12' })
+  const [target, setTarget] = useState<EcuTarget | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [ident, setIdent] = useState<{ name: string; value: string }[]>([])
   const [dtcs, setDtcs] = useState<EcuDtc[] | null>(null)
-  const uds = new Uds(elm)
+  const uds = new Uds(link)
+  const enet = link.kind === 'enet'
+  const presets = enet ? ENET_ECU_PRESETS : CAN_ECU_PRESETS
 
   // Beim Verlassen der Ansicht wieder auf OBD-Broadcast umstellen.
-  useEffect(() => () => void elm.setTarget(null).catch(() => undefined), [elm])
+  useEffect(() => () => void link.setTarget(null).catch(() => undefined), [link])
 
-  if (!elm.isCan11Bit) {
+  if (!link.supportsUds) {
     return (
       <p className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-400">
         Codierung (UDS) wird nur bei Fahrzeugen mit 11-bit-CAN-Bus unterstützt. Dein Fahrzeug nutzt ein
@@ -49,14 +55,18 @@ export function CodingPanel({ elm }: { elm: Elm327 }) {
     )
   }
 
-  const selectedTarget = (): CanTarget | null => {
+  const selectedTarget = (): EcuTarget | null => {
+    if (presetKey === 'custom' && enet) {
+      const address = parseInt(custom.address, 16)
+      return Number.isNaN(address) || address > 0xff ? null : { address }
+    }
     if (presetKey === 'custom') {
       const tx = parseInt(custom.tx, 16)
       const rx = parseInt(custom.rx, 16)
       return Number.isNaN(tx) || Number.isNaN(rx) ? null : { tx, rx }
     }
     const [g, e] = presetKey.split(':').map(Number)
-    return ECU_PRESETS[g].ecus[e].target
+    return presets[g].ecus[e].target
   }
 
   const guard = async (fn: () => Promise<void>) => {
@@ -74,8 +84,8 @@ export function CodingPanel({ elm }: { elm: Elm327 }) {
   const connect = () =>
     guard(async () => {
       const t = selectedTarget()
-      if (!t) throw new Error('Ungültige CAN-Adresse')
-      await elm.setTarget(t)
+      if (!t) throw new Error('Ungültige Adresse')
+      await link.setTarget(t)
       setDtcs(null)
       // Erreichbarkeit prüfen, bevor Daten gelesen werden.
       await uds.session(0x01)
@@ -94,13 +104,13 @@ export function CodingPanel({ elm }: { elm: Elm327 }) {
 
   const disconnect = () =>
     guard(async () => {
-      await elm.setTarget(null)
+      await link.setTarget(null)
       setTarget(null)
       setIdent([])
       setDtcs(null)
     })
 
-  const ecuName = target ? `${hex3(target.tx)}/${hex3(target.rx)}` : ''
+  const ecuName = target ? targetName(target) : ''
 
   return (
     <div className="space-y-6">
@@ -120,11 +130,11 @@ export function CodingPanel({ elm }: { elm: Elm327 }) {
             onChange={(e) => setPresetKey(e.target.value)}
             aria-label="Steuergerät"
           >
-            {ECU_PRESETS.map((g, gi) => (
+            {presets.map((g, gi) => (
               <optgroup key={g.group} label={g.group}>
                 {g.ecus.map((e, ei) => (
                   <option key={e.name} value={`${gi}:${ei}`}>
-                    {e.name} – {hex3(e.target.tx)}/{hex3(e.target.rx)}
+                    {e.name} – {targetName(e.target)}
                   </option>
                 ))}
               </optgroup>
@@ -133,9 +143,9 @@ export function CodingPanel({ elm }: { elm: Elm327 }) {
           </select>
           {presetKey === 'custom' && (
             <>
-              {(['tx', 'rx'] as const).map((k) => (
+              {(enet ? (['address'] as const) : (['tx', 'rx'] as const)).map((k) => (
                 <label key={k} className="text-xs text-zinc-400">
-                  {k === 'tx' ? 'Anfrage-ID' : 'Antwort-ID'}
+                  {k === 'tx' ? 'Anfrage-ID' : k === 'rx' ? 'Antwort-ID' : 'Diagnoseadresse'}
                   <input
                     className="mt-1 block w-20 rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-2 font-mono text-sm uppercase"
                     value={custom[k]}

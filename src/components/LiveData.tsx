@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import { BOOST, DEFAULT_SELECTION, PIDS, PID_BY_ID } from '../obd/pids'
 import { Sparkline } from './Sparkline'
 
 interface Props {
-  elm: Elm327
+  link: VehicleLink
   supported: Set<number>
 }
 
@@ -24,7 +24,7 @@ interface Gauge {
 
 const HISTORY = 60
 
-export function LiveData({ elm, supported }: Props) {
+export function LiveData({ link, supported }: Props) {
   const available = PIDS.filter((p) => supported.has(p.pid))
   const [selected, setSelected] = useState<number[]>(() =>
     DEFAULT_SELECTION.filter((p) => supported.has(p)),
@@ -47,7 +47,7 @@ export function LiveData({ elm, supported }: Props) {
 
     const poll = async () => {
       // Luftdruck ändert sich kaum – einmal zu Beginn lesen.
-      if (showBoost) baro = (await elm.readPid(PID_BY_ID.get(0x33)!).catch(() => null)) ?? baro
+      if (showBoost) baro = (await link.readPid(PID_BY_ID.get(0x33)!).catch(() => null)) ?? baro
 
       while (!cancelled) {
         const started = performance.now()
@@ -55,7 +55,7 @@ export function LiveData({ elm, supported }: Props) {
         for (const pid of selected) {
           if (cancelled) return
           const def = PID_BY_ID.get(pid)!
-          cycle[pid] = await elm.readPid(def).catch(() => null)
+          cycle[pid] = await link.readPid(def).catch(() => null)
         }
         if (cancelled) return
         if (showBoost && cycle[0x0b] != null) cycle[BOOST.key] = (cycle[0x0b]! - baro) / 100
@@ -82,7 +82,7 @@ export function LiveData({ elm, supported }: Props) {
     return () => {
       cancelled = true
     }
-  }, [elm, running, selected, showBoost])
+  }, [link, running, selected, showBoost])
 
   const toggle = (pid: number) =>
     setSelected((prev) => (prev.includes(pid) ? prev.filter((p) => p !== pid) : [...prev, pid]))

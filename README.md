@@ -1,7 +1,11 @@
-# DM Performance – OBD Diagnose
+# DM Performance – Fahrzeugdiagnose
 
-Web-App, die über einen ELM327-kompatiblen OBD-II-Dongle mit dem Auto kommuniziert.
-Läuft komplett im Browser, ohne Server und ohne App-Store.
+App für iPhone und Android (und als Web-App im Browser), die mit dem Auto kommuniziert –
+über einen ELM327-kompatiblen OBD-Dongle (alle Marken) oder per ENET (BMW, MINI, Toyota Supra A90).
+
+Die Oberfläche ist eine React-Web-App; [Capacitor](https://capacitorjs.com) verpackt sie als
+native iOS- und Android-App. Native Plugins liefern, was ein Browser nicht kann:
+TCP/UDP für ENET und WLAN-Dongles, Bluetooth LE auf dem iPhone.
 
 ## Funktionen
 
@@ -17,45 +21,98 @@ Läuft komplett im Browser, ohne Server und ohne App-Store.
   aufgelösten Drehzahl berechnet.
 - **Fehlercodes**: gespeicherte, ausstehende und permanente DTCs lesen
   (Mode 03/07/0A), Fehlerspeicher löschen (Mode 04).
-- **Codierung (UDS)**: Steuergerät per CAN-Adresse wählen (OBD-Standard und VAG-Vorlagen),
-  Identifikation lesen, Fehlerspeicher des Steuergeräts lesen/löschen, Datenkennungen (DID)
-  lesen und schreiben – mit Bit-Editor, automatischer Sicherung und Rücklese-Kontrolle.
-  Steuergeräte mit herstellerspezifischem Security Access werden nicht unterstützt.
-- **Fahrzeug-Info**: Fahrgestellnummer (VIN), OBD-Protokoll, Bordspannung.
-- **Terminal**: beliebige AT-/OBD-Befehle senden, komplette Kommunikation einsehen.
-- **Demo-Modus**: simuliertes Fahrzeug zum Ausprobieren ohne Auto.
+- **Codierung (UDS)**: Steuergerät wählen (CAN-IDs beim ELM327, Diagnoseadressen bei ENET;
+  Vorlagen für OBD-Standard, VAG und BMW), Identifikation lesen, Fehlerspeicher des
+  Steuergeräts lesen/löschen, Datenkennungen (DID) lesen und schreiben – mit Bit-Editor,
+  automatischer Sicherung und Rücklese-Kontrolle. Steuergeräte mit herstellerspezifischem
+  Security Access werden nicht unterstützt.
+- **Fahrzeug-Info**: Fahrgestellnummer (VIN), Protokoll, Bordspannung.
+- **Terminal**: AT-/OBD-Befehle (ELM327) bzw. UDS-Anfragen (ENET) senden, Kommunikation einsehen.
+- **Demo-Modus**: simuliertes Fahrzeug – als ELM327-Dongle und als BMW am ENET-Kabel.
 
-## Unterstützte Dongles
+## Verbindungen
 
-| Verbindung | Browser | Beispiele |
-| --- | --- | --- |
-| Bluetooth LE (Web Bluetooth) | Chrome/Edge auf Android, Windows, macOS, Linux; iOS nur mit „Bluefy“ | Vgate iCar Pro BLE, Veepeak OBDCheck BLE, OBDLink CX, ELM327-BLE-Klone |
-| USB (Web Serial) | Chrome/Edge Desktop | ELM327 USB (FTDI/CH340), OBDLink SX |
+| Verbindung | iPhone-App | Android-App | Browser |
+| --- | --- | --- | --- |
+| Bluetooth LE (Vgate iCar Pro BLE, Veepeak BLE, OBDLink CX) | ✓ | ✓ | Chrome/Edge (nicht Safari) |
+| WLAN-Dongle (ELM327 WiFi, Standard 192.168.0.10:35000) | ✓ | ✓ | – |
+| USB-Dongle (ELM327 USB, OBDLink SX) | – | – | Chrome/Edge Desktop |
+| BMW ENET-Kabel über USB-Ethernet-Adapter | ✓ ¹ | eingeschränkt ² | – |
+| BMW WLAN-ENET-Adapter | ✓ ¹ | ✓ | – |
 
-Nicht möglich aus dem Browser: klassische Bluetooth-Dongles (SPP, PIN 1234) und WLAN-Dongles.
-Web Bluetooth/Serial benötigen HTTPS (oder `localhost`).
+Klassische Bluetooth-Dongles (SPP, Pairing-PIN 1234) werden nicht unterstützt; auf dem iPhone
+erlaubt Apple sie grundsätzlich nicht.
+
+¹ Die automatische Fahrzeugsuche nutzt einen UDP-Broadcast. iOS erlaubt das nur mit der
+Berechtigung `com.apple.developer.networking.multicast`, die bei Apple beantragt werden muss
+([Antrag](https://developer.apple.com/contact/request/networking-multicast)). Ohne sie
+funktioniert ENET mit manueller IP-Eingabe.
+
+² Am ENET-Kabel gibt es keinen DHCP-Server. Viele Android-Geräte vergeben sich dann keine
+IP-Adresse am USB-Ethernet-Adapter. Zuverlässig ist ein WLAN-ENET-Adapter.
+
+### ENET-Protokoll
+
+BMW HSFZ: Fahrzeugerkennung per UDP an Port 6811, Diagnose per TCP an Port 6801,
+Testeradresse 0xF4. Implementiert in `src/obd/hsfz.ts` und `src/obd/enetLink.ts`,
+abgeglichen mit [EdiabasLib](https://github.com/uholeschak/ediabaslib).
+Neuere Fahrzeuge mit DoIP (ISO 13400) werden noch nicht unterstützt.
 
 ## Entwicklung
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # Produktionsbuild nach dist/
+npm run dev      # Web-App: http://localhost:5173
+npm test         # Parser-, Messungs- und ENET-Protokolltests
 npm run lint
+npm run build    # Produktionsbuild nach dist/
 ```
+
+### Android
+
+Voraussetzung: Android Studio bzw. Android SDK (API 36) und Java 21.
+
+```bash
+npm run app:android                  # baut android/app/build/outputs/apk/debug/app-debug.apk
+npx cap open android                 # oder in Android Studio öffnen und auf dem Handy starten
+```
+
+Die APK wird außerdem bei jedem Push von GitHub Actions gebaut (Workflow „App“, Artefakt
+`dm-performance-android-debug`).
+
+### iPhone
+
+Voraussetzung: Mac mit Xcode 26 und ein Apple-Developer-Account (für die Installation auf
+dem eigenen iPhone reicht ein kostenloser Account, für TestFlight/App Store das bezahlte
+Programm).
+
+```bash
+npm run app:sync
+npx cap open ios                     # in Xcode Team wählen, iPhone anschließen, Run
+```
+
+GitHub Actions kompiliert die iOS-App bei jedem Push (ohne Signatur) als Build-Prüfung.
 
 ## Aufbau
 
 ```
-src/obd/transport.ts           Schnittstelle für den Byte-Kanal
-src/obd/bleTransport.ts        Web Bluetooth (BLE-GATT, Notify + Write)
-src/obd/serialTransport.ts     Web Serial (USB)
-src/obd/simulatorTransport.ts  Simulierter ELM327 für den Demo-Modus
-src/obd/elm327.ts              Befehls-Queue, Initialisierung, OBD-Services
-src/obd/parse.ts               Parser für ELM327-Antworten (inkl. CAN-Mehrfachframes)
+src/obd/link.ts                Gemeinsame Schnittstelle aller Diagnosezugänge
+src/obd/elm327.ts              ELM327: Befehls-Queue, Initialisierung, OBD-Services, UDS über CAN
+src/obd/enetLink.ts            BMW ENET: HSFZ-Verbindung, OBD und UDS
+src/obd/hsfz.ts                HSFZ-Rahmen, Fahrzeugerkennung
+src/obd/transport.ts           Byte-Kanal zum ELM327
+src/obd/bleTransport.ts        Bluetooth LE im Browser (Web Bluetooth)
+src/obd/bleNativeTransport.ts  Bluetooth LE in der App (Capacitor-Plugin)
+src/obd/tcpTransport.ts        WLAN-Dongle über TCP
+src/obd/serialTransport.ts     USB im Browser (Web Serial)
+src/obd/parse.ts               Parser für OBD-Antworten (inkl. CAN-Mehrfachframes)
 src/obd/pids.ts                PID-Definitionen und Umrechnungsformeln
-src/obd/uds.ts                 UDS-Dienste (ISO 14229) für Codierung und Steuergeräte-Fehler
-src/perf/acceleration.ts       Auswertung Beschleunigungsmessung
-src/perf/dyno.ts               Leistungsberechnung aus dem Vollgaszug
-src/components/                UI (Verbinden, Live-Daten, Fehlercodes, Fahrzeug, Terminal)
+src/obd/uds.ts                 UDS-Dienste (ISO 14229), Steuergeräte-Vorlagen
+src/net/                       TCP/UDP-Schnittstelle und native Anbindung
+src/sim/                       Demo-Fahrzeug, simulierter ELM327 und BMW-Gateway
+src/perf/                      Auswertung Beschleunigung und Leistung
+src/components/                Oberfläche
+android/.../DiagSocketPlugin.java   Natives TCP/UDP-Plugin (Android)
+ios/App/App/DiagSocketPlugin.swift  Natives TCP/UDP-Plugin (iOS)
+tests/                         Tests (node:test)
 ```

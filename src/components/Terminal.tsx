@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import type { LogEntry } from '../hooks/useObd'
 
 interface Props {
-  elm: Elm327
+  link: VehicleLink
   log: LogEntry[]
   onClear: () => void
 }
@@ -22,7 +22,7 @@ const PREFIX: Record<LogEntry['direction'], string> = {
   error: '!',
 }
 
-export function Terminal({ elm, log, onClear }: Props) {
+export function Terminal({ link, log, onClear }: Props) {
   const [command, setCommand] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -36,15 +36,13 @@ export function Terminal({ elm, log, onClear }: Props) {
     const cmd = command.trim().toUpperCase()
     if (!cmd) return
     setCommand('')
-    await elm.send(cmd, 10000).catch(() => undefined)
+    await link.sendRaw(cmd).catch(() => undefined)
   }
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-zinc-400">
-        Rohbefehle an den ELM327 senden, z. B. <code>ATRV</code>, <code>ATI</code>,{' '}
-        <code>010C</code> oder <code>0902</code>. Die Kommunikation der anderen Ansichten erscheint
-        hier ebenfalls.
+        {link.terminalHint} Die Kommunikation der anderen Ansichten erscheint hier ebenfalls.
       </p>
       <div
         ref={scrollRef}
@@ -62,7 +60,7 @@ export function Terminal({ elm, log, onClear }: Props) {
           className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 font-mono text-sm uppercase"
           value={command}
           onChange={(e) => setCommand(e.target.value)}
-          placeholder="Befehl, z. B. ATRV"
+          placeholder={link.terminalPlaceholder}
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}

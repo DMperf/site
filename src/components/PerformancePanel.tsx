@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import { AccelPanel } from './AccelPanel'
 import { DynoPanel } from './DynoPanel'
 
-export function PerformancePanel({ elm }: { elm: Elm327 }) {
+export function PerformancePanel({ link }: { link: VehicleLink }) {
   const [view, setView] = useState<'accel' | 'dyno'>('accel')
   return (
     <div className="space-y-4">
@@ -23,7 +23,7 @@ export function PerformancePanel({ elm }: { elm: Elm327 }) {
           </button>
         ))}
       </div>
-      {view === 'accel' ? <AccelPanel elm={elm} /> : <DynoPanel elm={elm} />}
+      {view === 'accel' ? <AccelPanel link={link} /> : <DynoPanel link={link} />}
     </div>
   )
 }

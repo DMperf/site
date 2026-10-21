@@ -22,7 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
 export default function App() {
   const obd = useObd()
   const [tab, setTab] = useState<Tab>('live')
-  const { elm, adapter } = obd
+  const { link, adapter } = obd
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -30,7 +30,7 @@ export default function App() {
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4">
           <div className="whitespace-nowrap text-lg font-bold tracking-tight">
             DM <span className="text-red-600">Performance</span>
-            <span className="ml-2 text-sm font-normal text-zinc-500">OBD</span>
+            <span className="ml-2 text-sm font-normal text-zinc-500">Diagnose</span>
           </div>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <StatusDot status={obd.status} />
@@ -44,7 +44,7 @@ export default function App() {
             )}
           </div>
         </div>
-        {elm && (
+        {link && (
           <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4">
             {TABS.map((t) => (
               <button
@@ -64,23 +64,23 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {!elm || !adapter ? (
+        {!link || !adapter ? (
           <ConnectPanel status={obd.status} error={obd.error} onConnect={obd.connect} />
         ) : (
           <>
-            {tab === 'live' && <LiveData elm={elm} supported={obd.supported} />}
-            {tab === 'perf' && <PerformancePanel elm={elm} />}
-            {tab === 'dtc' && <DtcPanel elm={elm} />}
-            {tab === 'coding' && <CodingPanel elm={elm} />}
+            {tab === 'live' && <LiveData link={link} supported={obd.supported} />}
+            {tab === 'perf' && <PerformancePanel link={link} />}
+            {tab === 'dtc' && <DtcPanel link={link} />}
+            {tab === 'coding' && <CodingPanel link={link} />}
             {tab === 'info' && (
               <VehicleInfo
-                elm={elm}
+                link={link}
                 adapter={adapter}
                 transportLabel={obd.transportLabel}
                 supported={obd.supported}
               />
             )}
-            {tab === 'terminal' && <Terminal elm={elm} log={obd.log} onClear={obd.clearLog} />}
+            {tab === 'terminal' && <Terminal link={link} log={obd.log} onClear={obd.clearLog} />}
           </>
         )}
       </main>

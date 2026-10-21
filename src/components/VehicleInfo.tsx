@@ -1,35 +1,35 @@
 import { useEffect, useState } from 'react'
-import type { AdapterInfo, Elm327 } from '../obd/elm327'
+import type { AdapterInfo, VehicleLink } from '../obd/link'
 
 interface Props {
-  elm: Elm327
+  link: VehicleLink
   adapter: AdapterInfo
   transportLabel: string
   supported: Set<number>
 }
 
-export function VehicleInfo({ elm, adapter, transportLabel, supported }: Props) {
+export function VehicleInfo({ link, adapter, transportLabel, supported }: Props) {
   const [vin, setVin] = useState<string | null | undefined>(undefined)
   const [voltage, setVoltage] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const v = await elm.readBatteryVoltage().catch(() => null)
+      const v = await link.readBatteryVoltage().catch(() => null)
       if (!cancelled) setVoltage(v)
-      const vinResult = await elm.readVin().catch(() => null)
+      const vinResult = await link.readVin().catch(() => null)
       if (!cancelled) setVin(vinResult)
     })()
     return () => {
       cancelled = true
     }
-  }, [elm])
+  }, [link])
 
   const rows: [string, string][] = [
     ['Fahrgestellnummer (VIN)', vin === undefined ? 'wird gelesen …' : (vin ?? 'nicht verfügbar')],
     ['Hersteller-Kennung (WMI)', vin ? vin.slice(0, 3) : '–'],
     ['Modelljahr-Code', vin ? vin[9] : '–'],
-    ['Bordspannung (am Dongle)', voltage ?? '–'],
+    ['Bordspannung', voltage ?? '–'],
     ['OBD-Protokoll', adapter.protocol],
     ['CAN-Bus', adapter.isCan ? 'ja' : 'nein'],
     ['Adapter', adapter.version],

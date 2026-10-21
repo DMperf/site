@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Elm327 } from '../obd/elm327'
+import type { VehicleLink } from '../obd/link'
 import { PID_BY_ID } from '../obd/pids'
 import {
   analyzePull,
@@ -27,7 +27,7 @@ const FIELDS: { key: keyof DynoSettings; label: string; unit: string; step: numb
   { key: 'loss', label: 'Antriebsverlust', unit: '%', step: 1 },
 ]
 
-export function DynoPanel({ elm }: { elm: Elm327 }) {
+export function DynoPanel({ link }: { link: VehicleLink }) {
   const [settings, setSettings] = useState<DynoSettings>(() => load(SETTINGS_KEY, DEFAULT_DYNO_SETTINGS))
   const [recording, setRecording] = useState(false)
   const [rpm, setRpm] = useState<number | null>(null)
@@ -69,8 +69,8 @@ export function DynoPanel({ elm }: { elm: Elm327 }) {
       while (!cancelled) {
         const reading =
           i++ % SPEED_EVERY === 0
-            ? await elm.readPidTimed(SPEED).catch(() => null)
-            : await elm.readPidTimed(RPM).catch(() => null)
+            ? await link.readPidTimed(SPEED).catch(() => null)
+            : await link.readPidTimed(RPM).catch(() => null)
         if (cancelled) return
         if (!reading || reading.value === null) continue
         const t = reading.t / 1000
@@ -98,7 +98,7 @@ export function DynoPanel({ elm }: { elm: Elm327 }) {
     return () => {
       cancelled = true
     }
-  }, [elm, recording])
+  }, [link, recording])
 
   const update = (key: keyof DynoSettings, value: number) => {
     const next = { ...settings, [key]: value }

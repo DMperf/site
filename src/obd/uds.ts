@@ -1,5 +1,5 @@
 import { decodeDtc } from './parse'
-import type { CanTarget, Elm327 } from './elm327'
+import type { EcuTarget, VehicleLink } from './link'
 
 /** Negative Response Codes nach ISO 14229-1. */
 const NRC: Record<number, string> = {
@@ -32,10 +32,16 @@ export class UdsError extends Error {
 
 export interface EcuPreset {
   name: string
-  target: CanTarget
+  target: EcuTarget
 }
 
-export const ECU_PRESETS: { group: string; ecus: EcuPreset[] }[] = [
+export interface EcuGroup {
+  group: string
+  ecus: EcuPreset[]
+}
+
+/** Steuergeräte für ELM327 (CAN-IDs). */
+export const CAN_ECU_PRESETS: EcuGroup[] = [
   {
     group: 'OBD-Standard (alle Hersteller)',
     ecus: [
@@ -56,6 +62,27 @@ export const ECU_PRESETS: { group: string; ecus: EcuPreset[] }[] = [
       { name: '09 Zentralelektrik', target: { tx: 0x70e, rx: 0x778 } },
       { name: '17 Schalttafeleinsatz', target: { tx: 0x714, rx: 0x77e } },
       { name: '19 Gateway', target: { tx: 0x710, rx: 0x77a } },
+    ],
+  },
+]
+
+/**
+ * Steuergeräte für BMW ENET (Diagnoseadressen). Übliche Adressen der F-/G-Serie;
+ * welche Geräte verbaut sind, hängt vom Fahrzeug ab.
+ */
+export const ENET_ECU_PRESETS: EcuGroup[] = [
+  {
+    group: 'BMW (F-/G-Serie)',
+    ecus: [
+      { name: 'DME/DDE Motorsteuerung', target: { address: 0x12 } },
+      { name: 'EGS Getriebe', target: { address: 0x18 } },
+      { name: 'DSC Fahrdynamik', target: { address: 0x29 } },
+      { name: 'ZGW Zentrales Gateway', target: { address: 0x10 } },
+      { name: 'FEM/BDC Karosserie', target: { address: 0x40 } },
+      { name: 'KOMBI Instrumente', target: { address: 0x60 } },
+      { name: 'Headunit (NBT/EVO)', target: { address: 0x63 } },
+      { name: 'IHKA Klima', target: { address: 0x78 } },
+      { name: 'ACSM Airbag', target: { address: 0x01 } },
     ],
   },
 ]
@@ -104,14 +131,14 @@ export function parseHex(input: string): number[] | null {
 
 /** Unified Diagnostic Services (ISO 14229) über einen ELM327. */
 export class Uds {
-  private elm: Elm327
-  constructor(elm: Elm327) {
-    this.elm = elm
+  private link: VehicleLink
+  constructor(link: VehicleLink) {
+    this.link = link
   }
 
   /** Schickt einen Dienst und liefert die Nutzdaten der positiven Antwort. */
   async call(sid: number, data: number[] = []): Promise<number[]> {
-    const response = await this.elm.request([sid, ...data])
+    const response = await this.link.request([sid, ...data])
     if (response[0] === 0x7f) throw new UdsError(sid, response[2] ?? 0)
     if (response[0] !== sid + 0x40) throw new Error(`Unerwartete Antwort: ${toHex(response)}`)
     return response.slice(1)
