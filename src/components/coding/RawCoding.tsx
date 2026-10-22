@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { isAddressTarget, type EcuTarget, type VehicleLink } from '../obd/link'
+import { isAddressTarget, type EcuTarget, type VehicleLink } from '../../obd/link'
 import {
   CODING_DIDS,
   CAN_ECU_PRESETS,
@@ -10,20 +10,10 @@ import {
   toAscii,
   toHex,
   Uds,
-  UdsError,
   type EcuDtc,
-} from '../obd/uds'
-import { downloadFile, load, save } from '../storage'
+} from '../../obd/uds'
+import { writeCoding } from '../../coding/store'
 
-interface Backup {
-  date: string
-  ecu: string
-  did: string
-  before: string
-  after: string
-}
-
-const BACKUP_KEY = 'obd.coding.backups'
 const hex2 = (n: number) => n.toString(16).toUpperCase().padStart(2, '0')
 const hex3 = (n: number) => n.toString(16).toUpperCase().padStart(3, '0')
 const hex4 = (n: number) => n.toString(16).toUpperCase().padStart(4, '0')
@@ -31,7 +21,8 @@ const errorText = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const targetName = (t: EcuTarget) =>
   isAddressTarget(t) ? `0x${hex2(t.address)}` : `${hex3(t.tx)}/${hex3(t.rx)}`
 
-export function CodingPanel({ link }: { link: VehicleLink }) {
+/** Expertenmodus: beliebiges Steuergerät, Fehlerspeicher und Rohdaten (DIDs) lesen/schreiben. */
+export function RawCoding({ link }: { link: VehicleLink }) {
   const [presetKey, setPresetKey] = useState('0:0')
   const [custom, setCustom] = useState({ tx: '7E0', rx: '7E8', address: '12' })
   const [target, setTarget] = useState<EcuTarget | null>(null)
@@ -221,7 +212,7 @@ export function CodingPanel({ link }: { link: VehicleLink }) {
               ))}
           </section>
 
-          <DidEditor uds={uds} ecuName={ecuName} busy={busy} guard={guard} />
+          <DidEditor link={link} uds={uds} target={target} ecuName={ecuName} busy={busy} guard={guard} />
         </>
       )}
     </div>
@@ -229,19 +220,20 @@ export function CodingPanel({ link }: { link: VehicleLink }) {
 }
 
 interface EditorProps {
+  link: VehicleLink
+  target: EcuTarget
   uds: Uds
   ecuName: string
   busy: boolean
   guard: (fn: () => Promise<void>) => Promise<void>
 }
 
-function DidEditor({ uds, ecuName, busy, guard }: EditorProps) {
+function DidEditor({ link, target, uds, ecuName, busy, guard }: EditorProps) {
   const [didInput, setDidInput] = useState(hex4(CODING_DIDS[0].did))
   const [original, setOriginal] = useState<number[] | null>(null)
   const [draft, setDraft] = useState<number[]>([])
   const [selectedByte, setSelectedByte] = useState(0)
   const [status, setStatus] = useState<string | null>(null)
-  const [backups, setBackups] = useState<Backup[]>(() => load(BACKUP_KEY, []))
 
   const did = parseInt(didInput, 16)
   const validDid = /^[0-9A-Fa-f]{4}$/.test(didInput)
@@ -264,35 +256,18 @@ function DidEditor({ uds, ecuName, busy, guard }: EditorProps) {
     )
     if (!ok) return
     void guard(async () => {
-      const backup: Backup = {
-        date: new Date().toISOString(),
-        ecu: ecuName,
-        did: hex4(did),
-        before: toHex(original),
-        after: toHex(draft),
-      }
-      const next = [backup, ...backups].slice(0, 100)
-      setBackups(next)
-      save(BACKUP_KEY, next)
-      try {
-        await uds.session(0x03)
-        await uds.writeDid(did, draft)
-      } catch (e) {
-        if (e instanceof UdsError && e.code === 0x33) {
-          throw new Error(
-            'Das Steuergerät verlangt eine Freischaltung (Security Access). Diese ist herstellerspezifisch und wird nicht unterstützt.',
-          )
-        }
-        throw e
-      }
-      const verify = await uds.readDid(did)
-      await uds.session(0x01).catch(() => undefined)
-      setOriginal(verify)
-      setDraft(verify)
+      const { verified, data } = await writeCoding(
+        link,
+        { id: '', name: ecuName, target },
+        { [did]: original },
+        { [did]: draft },
+      )
+      setOriginal(data[did])
+      setDraft(data[did])
       setStatus(
-        toHex(verify) === toHex(draft)
+        verified
           ? 'Geschrieben und erfolgreich zurückgelesen. Zündung aus- und wieder einschalten, damit die Änderung wirkt.'
-          : `Achtung: Rückgelesener Wert weicht ab (${toHex(verify)}).`,
+          : `Achtung: Rückgelesener Wert weicht ab (${toHex(data[did])}).`,
       )
     })
   }
@@ -408,30 +383,6 @@ function DidEditor({ uds, ecuName, busy, guard }: EditorProps) {
         </>
       )}
 
-      {backups.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-zinc-400">Sicherungen ({backups.length})</summary>
-          <ul className="mt-2 space-y-2">
-            {backups.map((b) => (
-              <li key={b.date} className="rounded-lg bg-zinc-950 p-2 font-mono text-xs">
-                <div className="text-zinc-500">
-                  {new Date(b.date).toLocaleString('de-DE')} · {b.ecu} · DID {b.did}
-                </div>
-                <div>Alt: {b.before}</div>
-                <div>Neu: {b.after}</div>
-              </li>
-            ))}
-          </ul>
-          <button
-            className="btn-small mt-2"
-            onClick={() =>
-              downloadFile('codier-sicherungen.json', JSON.stringify(backups, null, 2), 'application/json')
-            }
-          >
-            Als Datei speichern
-          </button>
-        </details>
-      )}
     </section>
   )
 }

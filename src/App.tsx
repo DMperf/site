@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CodingPanel } from './components/CodingPanel'
+import { CodingPanel } from './components/coding/CodingPanel'
 import { ConnectPanel } from './components/ConnectPanel'
 import { DtcPanel } from './components/DtcPanel'
 import { LiveData } from './components/LiveData'
@@ -74,7 +74,7 @@ export default function App() {
             {tab === 'live' && <LiveData link={link} supported={obd.supported} />}
             {tab === 'perf' && <PerformancePanel link={link} />}
             {tab === 'dtc' && <DtcPanel link={link} />}
-            {tab === 'coding' && <CodingPanel link={link} />}
+            {tab === 'coding' && <CodingPanel link={link} demo={obd.demo} />}
             {tab === 'info' && (
               <VehicleInfo
                 link={link}

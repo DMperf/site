@@ -21,11 +21,15 @@ TCP/UDP für ENET und WLAN-Dongles, Bluetooth LE auf dem iPhone.
   aufgelösten Drehzahl berechnet.
 - **Fehlercodes**: gespeicherte, ausstehende und permanente DTCs lesen
   (Mode 03/07/0A), Fehlerspeicher löschen (Mode 04).
-- **Codierung (UDS)**: Steuergerät wählen (CAN-IDs beim ELM327, Diagnoseadressen bei ENET;
-  Vorlagen für OBD-Standard, VAG und BMW), Identifikation lesen, Fehlerspeicher des
-  Steuergeräts lesen/löschen, Datenkennungen (DID) lesen und schreiben – mit Bit-Editor,
-  automatischer Sicherung und Rücklese-Kontrolle. Steuergeräte mit herstellerspezifischem
-  Security Access werden nicht unterstützt.
+- **Codierung wie in BimmerCode**: Steuergerät antippen, Funktionen per Schalter oder Auswahl
+  ändern, gesammelt „Codieren“. Vorher wird automatisch gesichert, danach zurückgelesen;
+  jede Sicherung lässt sich wiederherstellen. „Fahrzeug prüfen“ zeigt, welche Steuergeräte
+  verbaut sind und ob die Codierdaten zu ihnen passen.
+  **Expertenmodus**: alle Parameter im Klartext (mit Suche), Rohdaten, beliebige Steuergeräte
+  per Adresse, Kennungen lesen/schreiben mit Bit-Editor, Fehlerspeicher je Steuergerät.
+  Codierdaten (welches Bit welche Funktion steuert) werden als JSON importiert – Format in
+  [docs/codierdaten.md](docs/codierdaten.md). Enthalten sind nur Daten für die Demo-Fahrzeuge.
+  Steuergeräte mit herstellerspezifischem Security Access werden nicht unterstützt.
 - **Fahrzeug-Info**: Fahrgestellnummer (VIN), Protokoll, Bordspannung.
 - **Terminal**: AT-/OBD-Befehle (ELM327) bzw. UDS-Anfragen (ENET) senden, Kommunikation einsehen.
 - **Demo-Modus**: simuliertes Fahrzeug – als ELM327-Dongle und als BMW am ENET-Kabel.
@@ -111,6 +115,7 @@ src/obd/uds.ts                 UDS-Dienste (ISO 14229), Steuergeräte-Vorlagen
 src/net/                       TCP/UDP-Schnittstelle und native Anbindung
 src/sim/                       Demo-Fahrzeug, simulierter ELM327 und BMW-Gateway
 src/perf/                      Auswertung Beschleunigung und Leistung
+src/coding/                    Codier-Kern: Definitionen, Bit-Logik, Lesen/Schreiben/Sichern
 src/components/                Oberfläche
 android/.../DiagSocketPlugin.java   Natives TCP/UDP-Plugin (Android)
 ios/App/App/DiagSocketPlugin.swift  Natives TCP/UDP-Plugin (iOS)

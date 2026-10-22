@@ -1,0 +1,314 @@
+{
+  "id": "beispiel-kombi",
+  "name": "Kombiinstrument",
+  "brand": "Beispiel",
+  "description": "Beispiel aus docs/ – gilt nur für das Demo-Fahrzeug.",
+  "demoOnly": true,
+  "target": {
+    "address": "0x60"
+  },
+  "match": [
+    {
+      "did": "0xF197",
+      "startsWith": "KOMBI (Demo)"
+    }
+  ],
+  "blocks": [
+    {
+      "did": "0x3000",
+      "length": 8
+    }
+  ],
+  "parameters": [
+    {
+      "id": "NADEL_SWEEP",
+      "name": "Zeigertest beim Start",
+      "byte": 0,
+      "mask": "0x01",
+      "values": [
+        {
+          "value": 0,
+          "name": "nicht aktiv"
+        },
+        {
+          "value": 1,
+          "name": "aktiv"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "DIGITAL_V",
+      "name": "Digitale Geschwindigkeit",
+      "byte": 0,
+      "mask": "0x02",
+      "values": [
+        {
+          "value": 0,
+          "name": "nicht aktiv"
+        },
+        {
+          "value": 1,
+          "name": "aktiv"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "SPORTANZEIGE",
+      "name": "Sportanzeigen",
+      "byte": 0,
+      "mask": "0x0C",
+      "values": [
+        {
+          "value": 0,
+          "name": "aus"
+        },
+        {
+          "value": 1,
+          "name": "Leistung und Drehmoment"
+        },
+        {
+          "value": 2,
+          "name": "Ladedruck und Öltemperatur"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "GURTWARNUNG",
+      "name": "Gurtwarnung",
+      "byte": 1,
+      "mask": "0x03",
+      "values": [
+        {
+          "value": 0,
+          "name": "aus"
+        },
+        {
+          "value": 1,
+          "name": "nur Fahrer"
+        },
+        {
+          "value": 2,
+          "name": "Fahrer und Beifahrer"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "TANK_LITER",
+      "name": "Tankinhalt in Litern",
+      "byte": 1,
+      "mask": "0x04",
+      "values": [
+        {
+          "value": 0,
+          "name": "nicht aktiv"
+        },
+        {
+          "value": 1,
+          "name": "aktiv"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "TEMPO_WARNUNG",
+      "name": "Geschwindigkeitswarnung",
+      "description": "0 = aus",
+      "byte": 2,
+      "numeric": {
+        "min": 0,
+        "max": 250,
+        "unit": "km/h"
+      },
+      "did": "0x3000"
+    },
+    {
+      "id": "LAENDERVARIANTE",
+      "name": "Ländervariante",
+      "byte": 3,
+      "mask": "0x03",
+      "values": [
+        {
+          "value": 0,
+          "name": "ECE"
+        },
+        {
+          "value": 1,
+          "name": "USA"
+        },
+        {
+          "value": 2,
+          "name": "Japan"
+        }
+      ],
+      "did": "0x3000"
+    },
+    {
+      "id": "KOMBI_TESTMODUS",
+      "name": "Testmodus Kombi",
+      "byte": 3,
+      "mask": "0x80",
+      "values": [
+        {
+          "value": 0,
+          "name": "nicht aktiv"
+        },
+        {
+          "value": 1,
+          "name": "aktiv"
+        }
+      ],
+      "did": "0x3000"
+    }
+  ],
+  "features": [
+    {
+      "id": "nadel",
+      "name": "Zeigertest beim Motorstart",
+      "category": "Anzeige",
+      "description": "Die Zeiger fahren beim Start einmal bis zum Anschlag.",
+      "kind": "toggle",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "NADEL_SWEEP": 0
+          }
+        },
+        {
+          "name": "an",
+          "set": {
+            "NADEL_SWEEP": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "digital",
+      "name": "Digitale Geschwindigkeitsanzeige",
+      "category": "Anzeige",
+      "kind": "toggle",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "DIGITAL_V": 0
+          }
+        },
+        {
+          "name": "an",
+          "set": {
+            "DIGITAL_V": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "sport",
+      "name": "Sportanzeigen",
+      "category": "Anzeige",
+      "kind": "choice",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "SPORTANZEIGE": 0
+          }
+        },
+        {
+          "name": "Leistung und Drehmoment",
+          "set": {
+            "SPORTANZEIGE": 1
+          }
+        },
+        {
+          "name": "Ladedruck und Öltemperatur",
+          "set": {
+            "SPORTANZEIGE": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "tank",
+      "name": "Tankinhalt in Litern",
+      "category": "Anzeige",
+      "kind": "toggle",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "TANK_LITER": 0
+          }
+        },
+        {
+          "name": "an",
+          "set": {
+            "TANK_LITER": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "gurt",
+      "name": "Gurtwarnung",
+      "category": "Warnungen",
+      "kind": "choice",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "GURTWARNUNG": 0
+          }
+        },
+        {
+          "name": "nur Fahrer",
+          "set": {
+            "GURTWARNUNG": 1
+          }
+        },
+        {
+          "name": "Fahrer und Beifahrer",
+          "set": {
+            "GURTWARNUNG": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "tempo",
+      "name": "Geschwindigkeitswarnung",
+      "category": "Warnungen",
+      "kind": "choice",
+      "options": [
+        {
+          "name": "aus",
+          "set": {
+            "TEMPO_WARNUNG": 0
+          }
+        },
+        {
+          "name": "120 km/h",
+          "set": {
+            "TEMPO_WARNUNG": 120
+          }
+        },
+        {
+          "name": "130 km/h",
+          "set": {
+            "TEMPO_WARNUNG": 130
+          }
+        },
+        {
+          "name": "160 km/h",
+          "set": {
+            "TEMPO_WARNUNG": 160
+          }
+        }
+      ]
+    }
+  ]
+}

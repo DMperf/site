@@ -41,7 +41,15 @@ function engineTorque(rpm: number) {
 }
 
 type Phase = 'stop' | 'accel' | 'brake'
-export type SimEcu = 'engine' | 'gearbox'
+export type SimEcu = 'engine' | 'gearbox' | 'kombi' | 'body'
+
+/**
+ * Codierblöcke der Demo-Steuergeräte. Kombi und Karosserie haben je einen
+ * BMW-artigen Block (0x3000, ENET-Demo) und einen VAG-artigen (0x0600, ELM-Demo)
+ * mit gleichem Aufbau – siehe src/coding/demoDefinitions.ts.
+ */
+const KOMBI_CODING = [0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+const BODY_CODING = [0x00, 0x03, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00]
 
 /**
  * Simuliertes Fahrzeug für den Demo-Modus. Fährt in Schleife:
@@ -57,8 +65,13 @@ export class SimVehicle {
     [0x01, 0x33],
     [0x04, 0x20],
   ]
-  private sessions: Record<SimEcu, number> = { engine: 1, gearbox: 1 }
-  private coding = [0x01, 0x14, 0x03, 0x0a, 0x24, 0x00, 0x80, 0x00, 0x00, 0x10]
+  private sessions: Record<SimEcu, number> = { engine: 1, gearbox: 1, kombi: 1, body: 1 }
+  private coding: Record<SimEcu, Record<number, number[]>> = {
+    engine: { 0x0600: [0x01, 0x14, 0x03, 0x0a, 0x24, 0x00, 0x80, 0x00, 0x00, 0x10] },
+    gearbox: {},
+    kombi: { 0x3000: [...KOMBI_CODING], 0x0600: [...KOMBI_CODING] },
+    body: { 0x3000: [...BODY_CODING], 0x0600: [...BODY_CODING] },
+  }
   private udsDtcs: number[][] = [
     [0x04, 0x20, 0x00, 0x09],
     [0xc1, 0x00, 0x87, 0x08],
@@ -121,9 +134,11 @@ export class SimVehicle {
       }
       case 0x2e: {
         const did = (req[1] << 8) | req[2]
-        if (ecu !== 'engine' || did !== 0x0600) return neg(0x33)
+        const block = this.coding[ecu][did]
+        if (!block) return neg(0x33)
         if (this.sessions[ecu] !== 3) return neg(0x7f)
-        this.coding = req.slice(3)
+        if (req.length - 3 !== block.length) return neg(0x13)
+        this.coding[ecu][did] = req.slice(3)
         return [0x6e, req[1], req[2]]
       }
       case 0x19:
@@ -137,6 +152,7 @@ export class SimVehicle {
   }
 
   private didValue(ecu: SimEcu, did: number): number[] | null {
+    if (this.coding[ecu][did]) return this.coding[ecu][did]
     const engine: Record<number, number[]> = {
       0xf187: ascii(this.engineIdent.part),
       0xf189: ascii(this.engineIdent.software),
@@ -144,14 +160,13 @@ export class SimVehicle {
       0xf18c: ascii(this.engineIdent.serial),
       0xf197: ascii(this.engineIdent.name),
       0xf190: ascii(this.vin),
-      0x0600: this.coding,
     }
-    const gearbox: Record<number, number[]> = {
-      0xf187: ascii('0GC927711   '),
-      0xf189: ascii('2105'),
-      0xf197: ascii('DQ381'),
+    const others: Record<Exclude<SimEcu, 'engine'>, Record<number, number[]>> = {
+      gearbox: { 0xf187: ascii('0GC927711   '), 0xf189: ascii('2105'), 0xf197: ascii('DQ381') },
+      kombi: { 0xf187: ascii('9325012'), 0xf189: ascii('0104'), 0xf197: ascii('KOMBI (Demo)') },
+      body: { 0xf187: ascii('9393713'), 0xf189: ascii('0211'), 0xf197: ascii('FEM/BDC (Demo)') },
     }
-    return (ecu === 'engine' ? engine : gearbox)[did] ?? null
+    return (ecu === 'engine' ? engine : others[ecu])[did] ?? null
   }
 
   /** Integriert die Fahrdynamik bis zum aktuellen Zeitpunkt. */

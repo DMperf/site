@@ -36,8 +36,8 @@ export function ConnectPanel({ status, error, onConnect }: Props) {
   const ble = native || isBluetoothSupported()
   const serial = !native && isSerialSupported()
 
-  const connectEnet = (network: Network, host: string, ident: VehicleIdent | null) => {
-    onConnect({ type: 'enet', network, host, ident, label: `ENET ${host}` })
+  const connectEnet = (network: Network, host: string, ident: VehicleIdent | null, demo = false) => {
+    onConnect({ type: 'enet', network, host, ident, label: `ENET ${host}`, demo })
   }
 
   const search = async (network: Network) => {
@@ -133,7 +133,7 @@ export function ConnectPanel({ status, error, onConnect }: Props) {
           <button
             className="btn-secondary"
             disabled={busy}
-            onClick={() => onConnect({ type: 'elm327', transport: new SimulatorTransport() })}
+            onClick={() => onConnect({ type: 'elm327', transport: new SimulatorTransport(), demo: true })}
           >
             <span className="text-base">Demo</span>
             <span className="text-xs opacity-75">Ohne Auto ausprobieren</span>
@@ -179,7 +179,7 @@ export function ConnectPanel({ status, error, onConnect }: Props) {
           <button
             className="btn-small"
             disabled={busy}
-            onClick={() => connectEnet(new SimulatedEnetNetwork(), SIM_ENET_IP, null)}
+            onClick={() => connectEnet(new SimulatedEnetNetwork(), SIM_ENET_IP, null, true)}
           >
             Demo (BMW)
           </button>

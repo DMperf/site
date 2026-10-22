@@ -1,5 +1,8 @@
-import { SimVehicle } from '../sim/vehicle'
+import { SimVehicle, type SimEcu } from '../sim/vehicle'
 import type { Transport } from './transport'
+
+/** Anfrage-IDs der Demo-Steuergeräte (VAG-Adressen für Kombi und Zentralelektrik). */
+const ECUS: Record<string, SimEcu> = { '7E0': 'engine', '7E1': 'gearbox', '714': 'kombi', '70E': 'body' }
 
 const hex = (n: number, len = 2) => n.toString(16).toUpperCase().padStart(len, '0')
 const bytesHex = (bytes: number[]) => bytes.map((b) => hex(b)).join('')
@@ -69,7 +72,7 @@ export class SimulatorTransport implements Transport {
       const res = this.vehicle.obd(req)
       return res ? frame(res) : 'NO DATA'
     }
-    const ecu = this.header === '7E0' ? 'engine' : this.header === '7E1' ? 'gearbox' : null
+    const ecu = ECUS[this.header]
     return ecu ? frame(this.vehicle.uds(ecu, req)) : 'NO DATA'
   }
 }

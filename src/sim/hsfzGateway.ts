@@ -14,11 +14,11 @@ const DEMO_IP = '169.254.12.34'
 const DEMO_VIN = 'WBA8E9C50GK123456'
 const ascii = (s: string) => [...s].map((c) => c.charCodeAt(0))
 
-const ECUS: Record<number, SimEcu> = { 0x12: 'engine', 0x18: 'gearbox' }
+const ECUS: Record<number, SimEcu> = { 0x12: 'engine', 0x18: 'gearbox', 0x60: 'kombi', 0x40: 'body' }
 
 /**
  * Simuliertes BMW-Fahrzeug am ENET-Kabel: ZGW mit HSFZ-Protokoll,
- * Motor- (0x12) und Getriebesteuergerät (0x18).
+ * Motor (0x12), Getriebe (0x18), Kombi (0x60) und Karosserie (0x40).
  */
 export class SimulatedEnetNetwork implements Network {
   private vehicle = new SimVehicle(DEMO_VIN, {

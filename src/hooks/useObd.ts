@@ -16,9 +16,13 @@ export interface LogEntry {
 }
 
 /** Wie verbunden werden soll: ELM327 über einen Transport oder BMW ENET. */
-export type ConnectSpec =
+export type ConnectSpec = (
   | { type: 'elm327'; transport: Transport }
   | { type: 'enet'; network: Network; host: string; ident: VehicleIdent | null; label: string }
+) & {
+  /** Simuliertes Fahrzeug – schaltet die Demo-Codierdaten frei. */
+  demo?: boolean
+}
 
 const MAX_LOG = 500
 
@@ -28,6 +32,7 @@ export function useObd() {
   const [adapter, setAdapter] = useState<AdapterInfo | null>(null)
   const [transportLabel, setTransportLabel] = useState('')
   const [supported, setSupported] = useState<Set<number>>(new Set())
+  const [demo, setDemo] = useState(false)
   const [log, setLog] = useState<LogEntry[]>([])
   const linkRef = useRef<VehicleLink | null>(null)
   const logId = useRef(0)
@@ -72,6 +77,7 @@ export function useObd() {
         setAdapter(info)
         setSupported(await link.getSupportedPids())
         linkRef.current = link
+        setDemo(spec.demo ?? false)
         setStatus('connected')
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
@@ -105,6 +111,7 @@ export function useObd() {
     adapter,
     transportLabel,
     supported,
+    demo,
     log,
     link: status === 'connected' ? linkRef.current : null,
     connect,

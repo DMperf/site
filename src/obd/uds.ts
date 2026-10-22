@@ -144,7 +144,7 @@ export class Uds {
     return response.slice(1)
   }
 
-  session(type: 0x01 | 0x03) {
+  session(type: number) {
     return this.call(0x10, [type])
   }
 
