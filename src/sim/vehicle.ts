@@ -15,6 +15,23 @@ const SHIFT_RPM = 6500
 const SHIFT_TIME = 0.3
 const IDLE = 800
 
+/** Kennungen der Motorsteuerung im Demo-Fahrzeug (Teilenummer, SW, HW, Serie, Name). */
+export interface SimEngineIdent {
+  part: string
+  software: string
+  hardware: string
+  serial: string
+  name: string
+}
+
+const VW_ENGINE: SimEngineIdent = {
+  part: '06K907425B  ',
+  software: '0003',
+  hardware: '06K907425   ',
+  serial: 'VWZ7Z0J1234567',
+  name: 'R4 2.0l TFSI',
+}
+
 export const SIM_VIN = 'WVWZZZ1KZAM543210'
 
 function engineTorque(rpm: number) {
@@ -54,8 +71,11 @@ export class SimVehicle {
   private shiftLeft = 0
   private rpm = IDLE
 
-  constructor(vin = SIM_VIN) {
+  private engineIdent: SimEngineIdent
+
+  constructor(vin = SIM_VIN, engineIdent = VW_ENGINE) {
     this.vin = vin
+    this.engineIdent = engineIdent
   }
 
   /** OBD-Anfrage (Service 01–0A). `null` = keine Antwort. */
@@ -118,11 +138,11 @@ export class SimVehicle {
 
   private didValue(ecu: SimEcu, did: number): number[] | null {
     const engine: Record<number, number[]> = {
-      0xf187: ascii('06K907425B  '),
-      0xf189: ascii('0003'),
-      0xf191: ascii('06K907425   '),
-      0xf18c: ascii('VWZ7Z0J1234567'),
-      0xf197: ascii('R4 2.0l TFSI'),
+      0xf187: ascii(this.engineIdent.part),
+      0xf189: ascii(this.engineIdent.software),
+      0xf191: ascii(this.engineIdent.hardware),
+      0xf18c: ascii(this.engineIdent.serial),
+      0xf197: ascii(this.engineIdent.name),
       0xf190: ascii(this.vin),
       0x0600: this.coding,
     }

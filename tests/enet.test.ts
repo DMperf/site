@@ -42,7 +42,7 @@ test('ENET gegen simuliertes BMW-Gateway', async () => {
   assert.equal((await uds.readDid(0x0600))[0], before[0] ^ 1)
   await assert.rejects(uds.writeDid(0xf190, [1]), /Security Access/)
   assert.equal((await uds.readDtcs()).length, 2)
-  assert.deepEqual(await link.sendRaw('12 22 F1 89'), ['62 F1 89 30 30 30 33'])
+  assert.deepEqual(await link.sendRaw('12 22 F1 89'), ['62 F1 89 30 41 31 42'])
   await assert.rejects(link.transact(0x55, [0x22, 0xf1, 0x90], 300), /Keine Antwort/)
 
   // Parallele Anfragen werden serialisiert.

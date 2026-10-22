@@ -21,7 +21,13 @@ const ECUS: Record<number, SimEcu> = { 0x12: 'engine', 0x18: 'gearbox' }
  * Motor- (0x12) und Getriebesteuergerät (0x18).
  */
 export class SimulatedEnetNetwork implements Network {
-  private vehicle = new SimVehicle(DEMO_VIN)
+  private vehicle = new SimVehicle(DEMO_VIN, {
+    part: '8631584',
+    software: '0A1B',
+    hardware: '8631584',
+    serial: 'BMW0000123456',
+    name: 'DME B48 (Demo)',
+  })
 
   async udpRequest(host: string, port: number, payload: Uint8Array): Promise<UdpReply[]> {
     const isIdent = port === HSFZ_IDENT_PORT && payload[5] === CTRL.IDENT

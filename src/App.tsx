@@ -30,7 +30,7 @@ export default function App() {
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4">
           <div className="whitespace-nowrap text-lg font-bold tracking-tight">
             DM <span className="text-red-600">Performance</span>
-            <span className="ml-2 text-sm font-normal text-zinc-500">Diagnose</span>
+            <span className="ml-2 hidden text-sm font-normal text-zinc-500 sm:inline">Diagnose</span>
           </div>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <StatusDot status={obd.status} />
@@ -49,8 +49,11 @@ export default function App() {
             {TABS.map((t) => (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm ${
+                onClick={(e) => {
+                  setTab(t.id)
+                  e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+                }}
+                className={`whitespace-nowrap border-b-2 px-3 py-2 text-sm sm:px-4 ${
                   tab === t.id
                     ? 'border-red-600 text-white'
                     : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -96,9 +99,10 @@ function StatusDot({ status }: { status: string }) {
   }
   const [color, label] = map[status]
   return (
-    <span className="flex items-center gap-2 text-zinc-300">
+    <span className="flex items-center gap-2 whitespace-nowrap text-zinc-300" title={label}>
       <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-      {label}
+      {/* Auf dem Handy reicht im verbundenen Zustand der grüne Punkt. */}
+      <span className={status === 'connected' ? 'sr-only sm:not-sr-only' : ''}>{label}</span>
     </span>
   )
 }
