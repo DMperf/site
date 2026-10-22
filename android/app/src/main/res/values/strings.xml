@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DM Performance</string>
+    <string name="title_activity_main">DM Performance</string>
+    <string name="package_name">de.dmperformance.obd</string>
+    <string name="custom_url_scheme">de.dmperformance.obd</string>
+</resources>
